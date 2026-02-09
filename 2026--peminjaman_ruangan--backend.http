@@ -1,0 +1,6 @@
+@_2026__peminjaman_ruangan__backend_HostAddress = http://localhost:5023
+
+GET {{_2026__peminjaman_ruangan__backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
