@@ -15,6 +15,55 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    context.Database.EnsureCreated();
+
+    if (!context.Rooms.Any())
+    {
+        var rooms = new List<Room>
+        {
+            new Room
+            {
+                Name = "Lab AI",
+                Code = "AI-01",
+                Building = "Gedung A",
+                Capacity = 40,
+                IsActive = true
+            },
+            new Room
+            {
+                Name = "Ruang Seminar",
+                Code = "SEM-01",
+                Building = "Gedung B",
+                Capacity = 100,
+                IsActive = true
+            },
+            new Room
+            {
+                Name = "Ruang Rapat",
+                Code = "RPT-01",
+                Building = "Gedung C",
+                Capacity = 25,
+                IsActive = true
+            },
+            new Room
+            {
+                Name = "Aula Utama",
+                Code = "AULA-01",
+                Building = "Gedung Utama",
+                Capacity = 250,
+                IsActive = true
+            }
+        };
+
+        context.Rooms.AddRange(rooms);
+        context.SaveChanges();
+    }
+}
+
 // 🔹 Aktifkan Swagger hanya saat Development
 if (app.Environment.IsDevelopment())
 {

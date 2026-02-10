@@ -1,14 +1,17 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using PeminjamanRuangan.DTOs.Room;
-
 namespace PeminjamanRuangan.Controllers
 {
     [ApiController]
     [Route("api/rooms")]
-    public class RoomController(ApplicationDbContext context) : ControllerBase
+    public class RoomController : ControllerBase
     {
-        private readonly ApplicationDbContext _context = context;
+        private readonly ApplicationDbContext _context;
+
+        public RoomController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
 
         // GET ALL ROOMS
         [HttpGet]
@@ -67,15 +70,10 @@ namespace PeminjamanRuangan.Controllers
             return Ok(result);
         }
 
-        // CREATE ROOM (ADMIN ONLY)
+        // CREATE ROOM
         [HttpPost]
-        public async Task<ActionResult<RoomResponseDto>> Create([FromBody] CreateRoomDto request, [FromQuery] int userId)
+        public async Task<ActionResult<RoomResponseDto>> Create(CreateRoomDto request)
         {
-            var user = await _context.Users.FindAsync(userId);
-
-            if (user == null || user.Role != UserRole.Admin)
-                return Forbid("Hanya admin yang boleh menambah ruangan.");
-
             if (string.IsNullOrWhiteSpace(request.Name))
                 return BadRequest("Name wajib diisi.");
 
@@ -113,15 +111,10 @@ namespace PeminjamanRuangan.Controllers
             return Ok(result);
         }
 
-        // UPDATE ROOM (ADMIN ONLY)
+        // UPDATE ROOM
         [HttpPut("{id}")]
-        public async Task<ActionResult<RoomResponseDto>> Update( int id, [FromBody] UpdateRoomDto request, [FromQuery] int userId)
+        public async Task<ActionResult<RoomResponseDto>> Update(int id, UpdateRoomDto request)
         {
-            var user = await _context.Users.FindAsync(userId);
-
-            if (user == null || user.Role != UserRole.Admin)
-                return Forbid("Hanya admin yang boleh mengubah ruangan.");
-
             var room = await _context.Rooms.FindAsync(id);
 
             if (room == null)
@@ -160,16 +153,10 @@ namespace PeminjamanRuangan.Controllers
             return Ok(result);
         }
 
-        // DELETE ROOM (DEACTIVATE - ADMIN ONLY)
+        // DELETE ROOM (Deactivate)
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id, [FromQuery] int userId)
-
+        public async Task<IActionResult> Delete(int id)
         {
-            var user = await _context.Users.FindAsync(userId);
-
-            if (user == null || user.Role != UserRole.Admin)
-                return Forbid("Hanya admin yang boleh menghapus ruangan.");
-
             var room = await _context.Rooms.FindAsync(id);
 
             if (room == null)
