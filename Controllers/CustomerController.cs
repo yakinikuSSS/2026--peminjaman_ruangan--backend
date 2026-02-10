@@ -11,7 +11,7 @@ namespace PeminjamanRuangan.Controllers
 
         // GET /customers
         [HttpGet]
-        public async Task<IActionResult> GetAll(string? search, bool? isActive)
+        public async Task<ActionResult<IEnumerable<CustomerResponseDto>>> GetAll(string? search, bool? isActive)
         {
             var query = _context.Users
                 .Where(u => u.Role == UserRole.Customer && u.DeletedAt == null)
@@ -27,53 +27,96 @@ namespace PeminjamanRuangan.Controllers
             if (isActive.HasValue)
                 query = query.Where(u => u.IsActive == isActive.Value);
 
-            return Ok(await query.ToListAsync());
+            var customers = await query.ToListAsync();
+
+            var result = customers.Select(u => new CustomerResponseDto
+            {
+                Id = u.Id,
+                Name = u.Name,
+                Email = u.Email,
+                Phone = u.Phone,
+                Address = u.Address,
+                IsActive = u.IsActive,
+                CreatedDate = u.CreatedDate
+            });
+
+            return Ok(result);
         }
 
         // GET /customers/{id}
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        public async Task<ActionResult<CustomerResponseDto>> GetById(int id)
         {
-            var customer = await _context.Users
-                .FirstOrDefaultAsync(u =>
-                    u.Id == id &&
-                    u.Role == UserRole.Customer &&
-                    u.DeletedAt == null);
+            var u = await _context.Users
+                .FirstOrDefaultAsync(x =>
+                    x.Id == id &&
+                    x.Role == UserRole.Customer &&
+                    x.DeletedAt == null);
 
-            if (customer == null)
+            if (u == null)
                 return NotFound();
 
-            return Ok(customer);
+            var result = new CustomerResponseDto
+            {
+                Id = u.Id,
+                Name = u.Name,
+                Email = u.Email,
+                Phone = u.Phone,
+                Address = u.Address,
+                IsActive = u.IsActive,
+                CreatedDate = u.CreatedDate
+            };
+
+            return Ok(result);
         }
 
         // POST /customers
         [HttpPost]
-        public async Task<IActionResult> Create(User user)
+        public async Task<ActionResult<CustomerResponseDto>> Create(CreateCustomerDto request)
         {
-            if (string.IsNullOrWhiteSpace(user.Name))
+            if (string.IsNullOrWhiteSpace(request.Name))
                 return BadRequest("Name wajib diisi.");
 
-            if (string.IsNullOrWhiteSpace(user.Email))
+            if (string.IsNullOrWhiteSpace(request.Email))
                 return BadRequest("Email wajib diisi.");
 
             var emailExists = await _context.Users
-                .AnyAsync(u => u.Email == user.Email);
+                .AnyAsync(u => u.Email == request.Email);
 
             if (emailExists)
                 return BadRequest("Email sudah digunakan.");
 
-            user.Role = UserRole.Customer;
-            user.CreatedDate = DateTime.UtcNow;
+            var user = new User
+            {
+                Name = request.Name,
+                Email = request.Email,
+                Phone = request.Phone,
+                Address = request.Address,
+                Role = UserRole.Customer,
+                CreatedDate = DateTime.UtcNow,
+                IsActive = true
+            };
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            return Ok(user);
+            var result = new CustomerResponseDto
+            {
+                Id = user.Id,
+                Name = user.Name,
+                Email = user.Email,
+                Phone = user.Phone,
+                Address = user.Address,
+                IsActive = user.IsActive,
+                CreatedDate = user.CreatedDate
+            };
+
+            return Ok(result);
         }
 
         // PUT /customers/{id}
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, User updated)
+        public async Task<ActionResult<CustomerResponseDto>> Update(int id, UpdateCustomerDto request)
         {
             var customer = await _context.Users.FindAsync(id);
 
@@ -82,27 +125,38 @@ namespace PeminjamanRuangan.Controllers
                 customer.DeletedAt != null)
                 return NotFound();
 
-            if (string.IsNullOrWhiteSpace(updated.Name))
+            if (string.IsNullOrWhiteSpace(request.Name))
                 return BadRequest("Name wajib diisi.");
 
-            if (string.IsNullOrWhiteSpace(updated.Email))
+            if (string.IsNullOrWhiteSpace(request.Email))
                 return BadRequest("Email wajib diisi.");
 
             var emailExists = await _context.Users
-                .AnyAsync(u => u.Email == updated.Email && u.Id != id);
+                .AnyAsync(u => u.Email == request.Email && u.Id != id);
 
             if (emailExists)
                 return BadRequest("Email sudah digunakan.");
 
-            customer.Name = updated.Name;
-            customer.Email = updated.Email;
-            customer.Phone = updated.Phone;
-            customer.Address = updated.Address;
-            customer.IsActive = updated.IsActive;
+            customer.Name = request.Name;
+            customer.Email = request.Email;
+            customer.Phone = request.Phone;
+            customer.Address = request.Address;
+            customer.IsActive = request.IsActive;
 
             await _context.SaveChangesAsync();
 
-            return Ok(customer);
+            var result = new CustomerResponseDto
+            {
+                Id = customer.Id,
+                Name = customer.Name,
+                Email = customer.Email,
+                Phone = customer.Phone,
+                Address = customer.Address,
+                IsActive = customer.IsActive,
+                CreatedDate = customer.CreatedDate
+            };
+
+            return Ok(result);
         }
 
         // DELETE /customers/{id}

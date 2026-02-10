@@ -21,26 +21,32 @@ namespace PeminjamanRuangan.Controllers
 
         // REGISTER CUSTOMER
         [HttpPost("register")]
-        public async Task<IActionResult> Register(User user)
+        public async Task<IActionResult> Register(RegisterRequestDto request)
         {
-            if (string.IsNullOrWhiteSpace(user.Name))
+            if (string.IsNullOrWhiteSpace(request.Name))
                 return BadRequest("Name wajib diisi.");
 
-            if (string.IsNullOrWhiteSpace(user.Email))
+            if (string.IsNullOrWhiteSpace(request.Email))
                 return BadRequest("Email wajib diisi.");
 
-            if (string.IsNullOrWhiteSpace(user.PasswordHash))
+            if (string.IsNullOrWhiteSpace(request.Password))
                 return BadRequest("Password wajib diisi.");
 
             var emailExists = await _context.Users
-                .AnyAsync(u => u.Email == user.Email);
+                .AnyAsync(u => u.Email == request.Email);
 
             if (emailExists)
                 return BadRequest("Email sudah digunakan.");
-
-            user.PasswordHash = HashPassword(user.PasswordHash);
-            user.Role = UserRole.Customer;
-            user.CreatedDate = DateTime.UtcNow;
+                
+            var user = new User
+            {
+                Name = request.Name,
+                Email = request.Email,
+                PasswordHash = HashPassword(request.Password),
+                Role = UserRole.Customer,
+                CreatedDate = DateTime.UtcNow,
+                IsActive = true
+            };
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();

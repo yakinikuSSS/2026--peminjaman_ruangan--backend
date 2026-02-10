@@ -8,15 +8,14 @@ public class User
 {
     public int Id { get; set; }
 
-    public string Name { get; set; } // required
-    public string Email { get; set; } // required & unique
+    public string Name { get; set; }
+    public string Email { get; set; }
     public string PasswordHash { get; set; }
 
     public string? Phone { get; set; }
     public string? Address { get; set; }
 
-    public bool IsActive { get; set; } = true; // status active/inactive
-
+    public bool IsActive { get; set; } = true;
     public UserRole Role { get; set; }
 
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;

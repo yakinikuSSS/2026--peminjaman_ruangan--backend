@@ -9,13 +9,17 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite("Data Source=room_booking.db"));
 
-builder.Services.AddOpenApi();
+// 🔹 Tambahkan Swagger/OpenAPI
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+// 🔹 Aktifkan Swagger hanya saat Development
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 // 🔹 Aktifkan Controller routing
