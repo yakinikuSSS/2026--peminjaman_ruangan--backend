@@ -2,14 +2,11 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 🔹 Tambahkan Controller support
 builder.Services.AddControllers();
 
-// 🔹 Tambahkan SQLite DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite("Data Source=room_booking.db"));
 
-// 🔹 Tambahkan Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

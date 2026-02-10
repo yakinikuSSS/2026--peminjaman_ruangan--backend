@@ -15,10 +15,12 @@ namespace PeminjamanRuangan.Controllers
 
         // GET ALL ROOMS
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<RoomResponseDto>>> GetAll(
+        public async Task<IActionResult> GetAll(
             string? search,
             string? building,
-            bool? isActive)
+            bool? isActive,
+            int pageNumber = 1,
+            int pageSize = 10)
         {
             var query = _context.Rooms.AsQueryable();
 
@@ -33,7 +35,12 @@ namespace PeminjamanRuangan.Controllers
             if (isActive.HasValue)
                 query = query.Where(r => r.IsActive == isActive.Value);
 
-            var rooms = await query.ToListAsync();
+            var totalCount = await query.CountAsync();
+
+            var rooms = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
 
             var result = rooms.Select(r => new RoomResponseDto
             {
@@ -45,7 +52,14 @@ namespace PeminjamanRuangan.Controllers
                 IsActive = r.IsActive
             });
 
-            return Ok(result);
+            return Ok(new
+            {
+                totalCount,
+                pageNumber,
+                pageSize,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                data = result
+            });
         }
 
         // GET ROOM BY ID
@@ -166,7 +180,7 @@ namespace PeminjamanRuangan.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok("Room dinonaktifkan.");
+            return Ok("Ruangan dihapus.");
         }
     }
 }

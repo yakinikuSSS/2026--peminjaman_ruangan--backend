@@ -46,7 +46,28 @@ namespace PeminjamanRuangan.Controllers
             _context.RoomBookings.Add(booking);
             await _context.SaveChangesAsync();
 
-            return Ok(booking);
+            var result = new BookingResponseDto
+            {
+                Id = booking.Id,
+                BorrowerName = booking.BorrowerName,
+                BorrowerPhone = booking.BorrowerPhone,
+                Purpose = booking.Purpose,
+                StartTime = booking.StartTime,
+                EndTime = booking.EndTime,
+                Status = booking.Status,
+                CreatedAt = booking.CreatedAt,
+                Room = new RoomResponseDto
+                {
+                    Id = room.Id,
+                    Name = room.Name,
+                    Code = room.Code,
+                    Building = room.Building,
+                    Capacity = room.Capacity,
+                    IsActive = room.IsActive
+                }
+            };
+
+            return Ok(result);
         }
 
         // GET ALL BOOKINGS
@@ -192,7 +213,27 @@ namespace PeminjamanRuangan.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(booking);
+            var result = new BookingResponseDto
+            {
+                Id = booking.Id,
+                BorrowerName = booking.BorrowerName,
+                BorrowerPhone = booking.BorrowerPhone,
+                Purpose = booking.Purpose,
+                StartTime = booking.StartTime,
+                EndTime = booking.EndTime,
+                Status = booking.Status,
+                CreatedAt = booking.CreatedAt,
+                Room = new RoomResponseDto
+                {
+                    Id = room.Id,
+                    Name = room.Name,
+                    Code = room.Code,
+                    Building = room.Building,
+                    Capacity = room.Capacity,
+                    IsActive = room.IsActive
+                }
+            };
+            return Ok(result);
         }
 
         // SOFT DELETE BOOKING
@@ -210,7 +251,7 @@ namespace PeminjamanRuangan.Controllers
             return Ok("Deleted");
         }
 
-        // CHANGE STATUS (ADMIN ONLY)
+        // CHANGE STATUS
         [HttpPatch("{id}/status")]
         public async Task<IActionResult> ChangeStatus(int id, ChangeBookingStatusDto request)
         {
