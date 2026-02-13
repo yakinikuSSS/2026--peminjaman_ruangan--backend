@@ -11,41 +11,63 @@ namespace PeminjamanRuangan.Controllers
 
         // CREATE BOOKING
         [HttpPost]
-        public async Task<IActionResult> Create(RoomBooking booking)
+        public async Task<IActionResult> Create(CreateBookingDto request)
         {
-            if (booking.StartTime >= booking.EndTime)
+            if (request.StartTime >= request.EndTime)
                 return BadRequest("StartTime harus lebih kecil dari EndTime.");
 
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Id == booking.UserId && u.IsActive && u.DeletedAt == null);
-
-            if (user == null)
-                return BadRequest("User tidak valid.");
-
-            if (user.Role != UserRole.Customer)
-                return BadRequest("Hanya customer yang boleh membuat booking.");
-
             var room = await _context.Rooms
-                .FirstOrDefaultAsync(r => r.Id == booking.RoomId && r.IsActive);
+                .FirstOrDefaultAsync(r => r.Id == request.RoomId && r.IsActive);
 
             if (room == null)
                 return BadRequest("Room tidak valid.");
 
             var isConflict = await _context.RoomBookings.AnyAsync(b =>
-                b.RoomId == booking.RoomId &&
+                b.RoomId == request.RoomId &&
                 b.DeletedAt == null &&
-                booking.StartTime < b.EndTime &&
-                booking.EndTime > b.StartTime);
+                request.StartTime < b.EndTime &&
+                request.EndTime > b.StartTime);
 
             if (isConflict)
                 return BadRequest("Jadwal bentrok dengan booking lain.");
 
-            booking.Status = BookingStatus.Pending;
+            var booking = new RoomBooking
+            {
+                RoomId = request.RoomId,
+                BorrowerName = request.BorrowerName,
+                BorrowerPhone = request.BorrowerPhone,
+                Purpose = request.Purpose,
+                StartTime = request.StartTime,
+                EndTime = request.EndTime,
+                Status = BookingStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
 
             _context.RoomBookings.Add(booking);
             await _context.SaveChangesAsync();
 
-            return Ok(booking);
+            var result = new BookingResponseDto
+            {
+                Id = booking.Id,
+                BorrowerName = booking.BorrowerName,
+                BorrowerPhone = booking.BorrowerPhone,
+                Purpose = booking.Purpose,
+                StartTime = booking.StartTime,
+                EndTime = booking.EndTime,
+                Status = booking.Status,
+                CreatedAt = booking.CreatedAt,
+                Room = new RoomResponseDto
+                {
+                    Id = room.Id,
+                    Name = room.Name,
+                    Code = room.Code,
+                    Building = room.Building,
+                    Capacity = room.Capacity,
+                    IsActive = room.IsActive
+                }
+            };
+
+            return Ok(result);
         }
 
         // GET ALL BOOKINGS
@@ -58,7 +80,6 @@ namespace PeminjamanRuangan.Controllers
         {
             var query = _context.RoomBookings
                 .Include(b => b.Room)
-                .Include(b => b.User)
                 .Where(b => b.DeletedAt == null)
                 .AsQueryable();
 
@@ -67,13 +88,12 @@ namespace PeminjamanRuangan.Controllers
                 query = query.Where(b =>
                     b.Purpose.Contains(search) ||
                     b.Room.Code.Contains(search) ||
-                    b.User.Name.Contains(search));
+                    b.BorrowerName.Contains(search));
             }
 
             if (status.HasValue)
                 query = query.Where(b => b.Status == status);
 
-            // TAMBAHKAN DI SINI (SORTING)
             if (!string.IsNullOrEmpty(sortBy))
             {
                 query = sortBy.ToLower() switch
@@ -94,54 +114,126 @@ namespace PeminjamanRuangan.Controllers
                 };
             }
 
-            return Ok(await query.ToListAsync());
-        }
+            var data = await query.ToListAsync();
 
+            var result = data.Select(b => new BookingResponseDto
+            {
+                Id = b.Id,
+                BorrowerName = b.BorrowerName,
+                BorrowerPhone = b.BorrowerPhone,
+                Purpose = b.Purpose,
+                StartTime = b.StartTime,
+                EndTime = b.EndTime,
+                Status = b.Status,
+                CreatedAt = b.CreatedAt,
+                Room = new RoomResponseDto
+                {
+                    Id = b.Room.Id,
+                    Name = b.Room.Name,
+                    Code = b.Room.Code,
+                    Building = b.Room.Building,
+                    Capacity = b.Room.Capacity,
+                    IsActive = b.Room.IsActive
+                }
+            });
+
+            return Ok(result);
+        }
 
         // GET BOOKING BY ID
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
+            var b = await _context.RoomBookings
+                .Include(x => x.Room)
+                .FirstOrDefaultAsync(x => x.Id == id && x.DeletedAt == null);
+
+            if (b == null)
+                return NotFound();
+
+            var result = new BookingResponseDto
+            {
+                Id = b.Id,
+                BorrowerName = b.BorrowerName,
+                BorrowerPhone = b.BorrowerPhone,
+                Purpose = b.Purpose,
+                StartTime = b.StartTime,
+                EndTime = b.EndTime,
+                Status = b.Status,
+                CreatedAt = b.CreatedAt,
+                Room = new RoomResponseDto
+                {
+                    Id = b.Room.Id,
+                    Name = b.Room.Name,
+                    Code = b.Room.Code,
+                    Building = b.Room.Building,
+                    Capacity = b.Room.Capacity,
+                    IsActive = b.Room.IsActive
+                }
+            };
+
+            return Ok(result);
+        }
+
+        // UPDATE BOOKING
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, UpdateBookingDto request)
+        {
             var booking = await _context.RoomBookings
-                .Include(b => b.Room)
-                .Include(b => b.User)
                 .FirstOrDefaultAsync(b => b.Id == id && b.DeletedAt == null);
 
             if (booking == null)
                 return NotFound();
 
-            return Ok(booking);
-        }
-
-        // UPDATE BOOKING
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, RoomBooking updated)
-        {
-            var booking = await _context.RoomBookings.FindAsync(id);
-            if (booking == null || booking.DeletedAt != null)
-                return NotFound();
-
-            if (updated.StartTime >= updated.EndTime)
+            if (request.StartTime >= request.EndTime)
                 return BadRequest("StartTime harus lebih kecil dari EndTime.");
+
+            var room = await _context.Rooms
+                .FirstOrDefaultAsync(r => r.Id == request.RoomId && r.IsActive);
+
+            if (room == null)
+                return BadRequest("Room tidak valid.");
 
             var isConflict = await _context.RoomBookings.AnyAsync(b =>
                 b.Id != id &&
-                b.RoomId == updated.RoomId &&
+                b.RoomId == request.RoomId &&
                 b.DeletedAt == null &&
-                updated.StartTime < b.EndTime &&
-                updated.EndTime > b.StartTime);
+                request.StartTime < b.EndTime &&
+                request.EndTime > b.StartTime);
 
             if (isConflict)
                 return BadRequest("Jadwal bentrok.");
 
-            booking.RoomId = updated.RoomId;
-            booking.Purpose = updated.Purpose;
-            booking.StartTime = updated.StartTime;
-            booking.EndTime = updated.EndTime;
+            booking.RoomId = request.RoomId;
+            booking.BorrowerName = request.BorrowerName;
+            booking.BorrowerPhone = request.BorrowerPhone;
+            booking.Purpose = request.Purpose;
+            booking.StartTime = request.StartTime;
+            booking.EndTime = request.EndTime;
 
             await _context.SaveChangesAsync();
 
-            return Ok(booking);
+            var result = new BookingResponseDto
+            {
+                Id = booking.Id,
+                BorrowerName = booking.BorrowerName,
+                BorrowerPhone = booking.BorrowerPhone,
+                Purpose = booking.Purpose,
+                StartTime = booking.StartTime,
+                EndTime = booking.EndTime,
+                Status = booking.Status,
+                CreatedAt = booking.CreatedAt,
+                Room = new RoomResponseDto
+                {
+                    Id = room.Id,
+                    Name = room.Name,
+                    Code = room.Code,
+                    Building = room.Building,
+                    Capacity = room.Capacity,
+                    IsActive = room.IsActive
+                }
+            };
+            return Ok(result);
         }
 
         // SOFT DELETE BOOKING
@@ -159,28 +251,25 @@ namespace PeminjamanRuangan.Controllers
             return Ok("Deleted");
         }
 
-        // CHANGE STATUS (ADMIN ONLY)
+        // CHANGE STATUS
         [HttpPatch("{id}/status")]
-        public async Task<IActionResult> ChangeStatus(int id, BookingStatus status, int userId)
+        public async Task<IActionResult> ChangeStatus(int id, ChangeBookingStatusDto request)
         {
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Id == userId && u.DeletedAt == null);
+            var booking = await _context.RoomBookings
+                .FirstOrDefaultAsync(b => b.Id == id && b.DeletedAt == null);
 
-            if (user == null)
-                return BadRequest("User tidak ditemukan.");
-
-            if (user.Role != UserRole.Admin)
-                return Forbid("Hanya admin yang boleh mengubah status.");
-
-            var booking = await _context.RoomBookings.FindAsync(id);
-            if (booking == null || booking.DeletedAt != null)
+            if (booking == null)
                 return NotFound();
 
-            booking.Status = status;
+            booking.Status = request.Status;
 
             await _context.SaveChangesAsync();
 
-            return Ok(booking);
+            return Ok(new
+            {
+                booking.Id,
+                booking.Status
+            });
         }
     }
 }

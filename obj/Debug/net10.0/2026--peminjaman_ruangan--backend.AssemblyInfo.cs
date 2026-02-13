@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("2026--peminjaman_ruangan--backend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ecb762b18ae021eefb8d66dbe857a4845319730c")]
 [assembly: System.Reflection.AssemblyProductAttribute("2026--peminjaman_ruangan--backend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("2026--peminjaman_ruangan--backend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

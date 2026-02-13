@@ -1,26 +1,33 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
 namespace PeminjamanRuangan.Controllers
 {
     [ApiController]
     [Route("api/rooms")]
-    public class RoomController(ApplicationDbContext context) : ControllerBase
+    public class RoomController : ControllerBase
     {
-        private readonly ApplicationDbContext _context = context;
+        private readonly ApplicationDbContext _context;
+
+        public RoomController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
 
         // GET ALL ROOMS
         [HttpGet]
-        public async Task<IActionResult> GetAll(string? search, string? building, bool? isActive)
+        public async Task<IActionResult> GetAll(
+            string? search,
+            string? building,
+            bool? isActive,
+            int pageNumber = 1,
+            int pageSize = 10)
         {
             var query = _context.Rooms.AsQueryable();
 
             if (!string.IsNullOrEmpty(search))
-            {
                 query = query.Where(r =>
                     r.Name.Contains(search) ||
                     r.Code.Contains(search));
-            }
 
             if (!string.IsNullOrEmpty(building))
                 query = query.Where(r => r.Building.Contains(building));
@@ -28,94 +35,142 @@ namespace PeminjamanRuangan.Controllers
             if (isActive.HasValue)
                 query = query.Where(r => r.IsActive == isActive.Value);
 
-            return Ok(await query.ToListAsync());
+            var totalCount = await query.CountAsync();
+
+            var rooms = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var result = rooms.Select(r => new RoomResponseDto
+            {
+                Id = r.Id,
+                Name = r.Name,
+                Code = r.Code,
+                Building = r.Building,
+                Capacity = r.Capacity,
+                IsActive = r.IsActive
+            });
+
+            return Ok(new
+            {
+                totalCount,
+                pageNumber,
+                pageSize,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                data = result
+            });
         }
 
         // GET ROOM BY ID
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        public async Task<ActionResult<RoomResponseDto>> GetById(int id)
         {
-            var room = await _context.Rooms.FindAsync(id);
+            var r = await _context.Rooms.FindAsync(id);
 
-            if (room == null)
+            if (r == null)
                 return NotFound();
 
-            return Ok(room);
+            var result = new RoomResponseDto
+            {
+                Id = r.Id,
+                Name = r.Name,
+                Code = r.Code,
+                Building = r.Building,
+                Capacity = r.Capacity,
+                IsActive = r.IsActive
+            };
+
+            return Ok(result);
         }
 
-        // CREATE ROOM (ADMIN ONLY)
+        // CREATE ROOM
         [HttpPost]
-        public async Task<IActionResult> Create(Room room, int userId)
+        public async Task<ActionResult<RoomResponseDto>> Create(CreateRoomDto request)
         {
-            var user = await _context.Users.FindAsync(userId);
-
-            if (user == null || user.Role != UserRole.Admin)
-                return Forbid("Hanya admin yang boleh menambah ruangan.");
-
-            if (string.IsNullOrWhiteSpace(room.Name))
+            if (string.IsNullOrWhiteSpace(request.Name))
                 return BadRequest("Name wajib diisi.");
 
-            if (string.IsNullOrWhiteSpace(room.Code))
+            if (string.IsNullOrWhiteSpace(request.Code))
                 return BadRequest("Code wajib diisi.");
 
             var codeExists = await _context.Rooms
-                .AnyAsync(r => r.Code == room.Code);
+                .AnyAsync(r => r.Code == request.Code);
 
             if (codeExists)
                 return BadRequest("Kode ruangan sudah digunakan.");
+
+            var room = new Room
+            {
+                Name = request.Name,
+                Code = request.Code,
+                Building = request.Building,
+                Capacity = request.Capacity,
+                IsActive = true
+            };
 
             _context.Rooms.Add(room);
             await _context.SaveChangesAsync();
 
-            return Ok(room);
+            var result = new RoomResponseDto
+            {
+                Id = room.Id,
+                Name = room.Name,
+                Code = room.Code,
+                Building = room.Building,
+                Capacity = room.Capacity,
+                IsActive = room.IsActive
+            };
+
+            return Ok(result);
         }
 
-        // UPDATE ROOM (ADMIN ONLY)
+        // UPDATE ROOM
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, Room updated, int userId)
+        public async Task<ActionResult<RoomResponseDto>> Update(int id, UpdateRoomDto request)
         {
-            var user = await _context.Users.FindAsync(userId);
-
-            if (user == null || user.Role != UserRole.Admin)
-                return Forbid("Hanya admin yang boleh mengubah ruangan.");
-
             var room = await _context.Rooms.FindAsync(id);
 
             if (room == null)
                 return NotFound();
 
-            if (string.IsNullOrWhiteSpace(updated.Name))
+            if (string.IsNullOrWhiteSpace(request.Name))
                 return BadRequest("Name wajib diisi.");
 
-            if (string.IsNullOrWhiteSpace(updated.Code))
+            if (string.IsNullOrWhiteSpace(request.Code))
                 return BadRequest("Code wajib diisi.");
 
             var codeExists = await _context.Rooms
-                .AnyAsync(r => r.Code == updated.Code && r.Id != id);
+                .AnyAsync(r => r.Code == request.Code && r.Id != id);
 
             if (codeExists)
                 return BadRequest("Kode ruangan sudah digunakan.");
 
-            room.Name = updated.Name;
-            room.Code = updated.Code;
-            room.Building = updated.Building;
-            room.Capacity = updated.Capacity;
-            room.IsActive = updated.IsActive;
+            room.Name = request.Name;
+            room.Code = request.Code;
+            room.Building = request.Building;
+            room.Capacity = request.Capacity;
+            room.IsActive = request.IsActive;
 
             await _context.SaveChangesAsync();
 
-            return Ok(room);
+            var result = new RoomResponseDto
+            {
+                Id = room.Id,
+                Name = room.Name,
+                Code = room.Code,
+                Building = room.Building,
+                Capacity = room.Capacity,
+                IsActive = room.IsActive
+            };
+
+            return Ok(result);
         }
 
-        // DELETE ROOM (DEACTIVATE - ADMIN ONLY)
+        // DELETE ROOM (Deactivate)
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id, int userId)
+        public async Task<IActionResult> Delete(int id)
         {
-            var user = await _context.Users.FindAsync(userId);
-
-            if (user == null || user.Role != UserRole.Admin)
-                return Forbid("Hanya admin yang boleh menghapus ruangan.");
-
             var room = await _context.Rooms.FindAsync(id);
 
             if (room == null)
@@ -125,7 +180,7 @@ namespace PeminjamanRuangan.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok("Room dinonaktifkan.");
+            return Ok("Ruangan dihapus.");
         }
     }
 }

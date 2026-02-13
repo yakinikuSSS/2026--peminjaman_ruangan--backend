@@ -1,0 +1,46 @@
+# Build results
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / VS Code
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Database files (jika ada)
+*.mdf
+*.ldf
+
+# EF Core
+Migrations/*.Designer.cs
+
+# Publish output
+publish/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
+*.temp
+
+# NuGet
+*.nupkg
+packages/
+.nuget/
+
+# Test results
+TestResults/
+
+# Coverage
+coverage/
