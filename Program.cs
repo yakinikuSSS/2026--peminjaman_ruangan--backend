@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using PeminjamanRuangan.Services;
+using PeminjamanRuangan.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -6,56 +8,126 @@ builder.Services.AddControllers();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite("Data Source=room_booking.db"));
-
+builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:5173")
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+        });
+});
+
 var app = builder.Build();
+app.UseCors("AllowFrontend");
+
+var rooms = new List<Room>();
 
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-    context.Database.EnsureCreated();
+    context.Database.Migrate();
 
     if (!context.Rooms.Any())
     {
-        var rooms = new List<Room>
+    var buildingConfig = new Dictionary<string, int>
+    {
+        { "SAW", 11 },
+        { "Pasca Sarjana", 11 },
+        { "Gedung D4", 3 },
+        { "Gedung D3", 2 }
+    };
+
+    int roomsPerFloor = 10;
+
+    foreach (var building in buildingConfig)
+    {
+        string buildingName = building.Key;
+        int totalFloors = building.Value;
+
+        string buildingCode = buildingName switch
         {
-            new Room
-            {
-                Name = "Lab AI",
-                Code = "AI-01",
-                Building = "Gedung A",
-                Capacity = 40,
-                IsActive = true
-            },
-            new Room
-            {
-                Name = "Ruang Seminar",
-                Code = "SEM-01",
-                Building = "Gedung B",
-                Capacity = 100,
-                IsActive = true
-            },
-            new Room
-            {
-                Name = "Ruang Rapat",
-                Code = "RPT-01",
-                Building = "Gedung C",
-                Capacity = 25,
-                IsActive = true
-            },
-            new Room
-            {
-                Name = "Aula Utama",
-                Code = "AULA-01",
-                Building = "Gedung Utama",
-                Capacity = 250,
-                IsActive = true
-            }
+            "SAW" => "SAW",
+            "Pasca Sarjana" => "PAS",
+            "Gedung D4" => "D4",
+            "Gedung D3" => "D3",
+            _ => "UNK"
         };
 
+        for (int floor = 1; floor <= totalFloors; floor++)
+        {
+            for (int roomNumber = 1; roomNumber <= roomsPerFloor; roomNumber++)
+            {
+                rooms.Add(new Room
+                {
+                    Name = $"Ruang {buildingName} Lantai {floor} - {roomNumber}",
+                    Code = $"{buildingCode}-{floor}-{roomNumber:D2}",
+                    Building = buildingName,
+                    Capacity = 20 + (roomNumber * 5),
+                    IsActive = true
+                });
+            }
+        }
+    }
+    // Ruangan khusus
+
+    rooms.AddRange(new List<Room>
+    {
+        new Room
+        {
+            Name = "Lapangan Basket",
+            Code = "D4-0-01",
+            Building = "Gedung D4",
+            Capacity = 200,
+            IsActive = true
+        },
+        new Room
+        {
+            Name = "Lapangan Merah",
+            Code = "D3-0-01",
+            Building = "Gedung D3",
+            Capacity = 150,
+            IsActive = true
+        },
+        new Room
+        {
+            Name = "Aula Gedung D4",
+            Code = "D4-1-99",
+            Building = "Gedung D4",
+            Capacity = 300,
+            IsActive = true
+        },
+        new Room
+        {
+            Name = "Auditorium Pasca Sarjana",
+            Code = "PAS-6-99",
+            Building = "Pasca Sarjana",
+            Capacity = 400,
+            IsActive = true
+        },
+        new Room
+        {
+            Name = "Teater D3",
+            Code = "D3-1-99",
+            Building = "Gedung D3",
+            Capacity = 120,
+            IsActive = true
+        },
+        new Room
+        {
+            Name = "Mini Teater Pasca Sarjana",
+            Code = "PAS-2-98",
+            Building = "Pasca Sarjana",
+            Capacity = 80,
+            IsActive = true
+        }
+    });
         context.Rooms.AddRange(rooms);
         context.SaveChanges();
     }
