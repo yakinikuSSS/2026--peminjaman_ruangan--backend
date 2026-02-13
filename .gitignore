@@ -1,6 +1,11 @@
-# Build results
+# Build output
 bin/
 obj/
+
+# Database
+*.db
+*.mdf
+*.ldf
 
 # Visual Studio
 .vs/
@@ -16,23 +21,11 @@ obj/
 # Logs
 *.log
 
-# Database files (jika ada)
-*.mdf
-*.ldf
-
 # EF Core
 Migrations/*.Designer.cs
 
 # Publish output
 publish/
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Temp files
-*.tmp
-*.temp
 
 # NuGet
 *.nupkg
@@ -44,3 +37,11 @@ TestResults/
 
 # Coverage
 coverage/
+
+# OS generated
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
+*.temp
