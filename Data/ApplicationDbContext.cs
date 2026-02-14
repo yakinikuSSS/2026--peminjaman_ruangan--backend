@@ -14,8 +14,10 @@ public class ApplicationDbContext : DbContext
         base.OnModelCreating(modelBuilder);
         // RoomBooking → Room (Many to One)
         modelBuilder.Entity<RoomBooking>()
+            .HasQueryFilter(b => b.DeletedAt == null)
             .HasOne(b => b.Room)
             .WithMany(r => r.Bookings)
             .HasForeignKey(b => b.RoomId);
+
     }
 }
