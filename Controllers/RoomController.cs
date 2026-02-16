@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PeminjamanRuangan.DTOs.Room;
 namespace PeminjamanRuangan.Controllers
 {
     [ApiController]
@@ -52,13 +53,13 @@ namespace PeminjamanRuangan.Controllers
                 IsActive = r.IsActive
             });
 
-            return Ok(new
+            return Ok(new PaginatedResponseDto<RoomResponseDto>
             {
-                totalCount,
-                pageNumber,
-                pageSize,
-                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-                data = result
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                Data = result
             });
         }
 
@@ -182,5 +183,39 @@ namespace PeminjamanRuangan.Controllers
 
             return Ok("Ruangan dihapus.");
         }
+
+        [HttpGet("available")]
+        public async Task<ActionResult<IEnumerable<AvailableRoomDto>>> GetAvailableRooms(
+            string building,
+            DateTime startTime,
+            DateTime endTime)
+        {
+            if (startTime >= endTime)
+                return BadRequest("Waktu tidak valid.");
+
+            var rooms = _context.Rooms
+                .Where(r => r.Building == building && r.IsActive);
+
+            var availableRooms = await rooms
+                .Where(r => !_context.RoomBookings
+                    .Any(b =>
+                        b.RoomId == r.Id &&
+                        (b.Status == BookingStatus.Pending ||
+                            b.Status == BookingStatus.Approved) &&
+                        b.StartTime < endTime &&
+                        b.EndTime > startTime))
+                .Select(r => new AvailableRoomDto
+                {
+                    Id = r.Id,
+                    Name = r.Name,
+                    Code = r.Code,
+                    Building = r.Building,
+                    Capacity = r.Capacity
+                })
+                .ToListAsync();
+
+            return Ok(availableRooms);
+        }
+
     }
 }
