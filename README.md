@@ -81,7 +81,7 @@ Swagger digunakan untuk:
 - Validasi fitur booking, history, dan dashboard
 
 
-## 📌 Core Features
+## Core Features
 
 ### Booking
 - Create Booking
@@ -154,7 +154,6 @@ BACKEND/
 └── Program.cs
 ```
 
----
 
 ## Troubleshooting
 
