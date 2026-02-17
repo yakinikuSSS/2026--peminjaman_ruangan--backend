@@ -1,12 +1,6 @@
 # Changelog
 
-Semua perubahan penting pada backend akan didokumentasikan di file ini.
-
-Project ini menggunakan Semantic Versioning.
-
----
-
-## [1.0.0] - 2026-02-XX
+## [1.0.0] - 2026-02-17
 
 ### Added
 - Implementasi Booking CRUD API
