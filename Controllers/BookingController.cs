@@ -57,7 +57,7 @@ namespace PeminjamanRuangan.Controllers
                 StartTime = request.StartTime,
                 EndTime = request.EndTime,
                 Status = BookingStatus.Pending,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
             _context.RoomBookings.Add(booking);
@@ -74,7 +74,6 @@ namespace PeminjamanRuangan.Controllers
             string? sortBy,
             bool desc = false)
         {
-            await AutoUpdateStatuses();
             var query = _context.RoomBookings
                 .Include(b => b.Room)
                 .Where(b => b.DeletedAt == null && (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Approved))
@@ -204,7 +203,7 @@ namespace PeminjamanRuangan.Controllers
             if (booking == null || booking.DeletedAt != null)
                 return NotFound();
 
-            booking.DeletedAt = DateTime.Now;
+            booking.DeletedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             return Ok("Deleted");
@@ -290,10 +289,12 @@ namespace PeminjamanRuangan.Controllers
         [HttpGet("history")]
         public async Task<IActionResult> GetHistory(
             string? search,
+            BookingStatus? status,
+            DateTime? startDate,
+            DateTime? endDate,
             string? sortBy,
             bool desc = false)
         {
-            await AutoUpdateStatuses();
             var query = _context.RoomBookings
                 .Include(b => b.Room)
                 .Where(b =>
@@ -305,10 +306,30 @@ namespace PeminjamanRuangan.Controllers
 
             if (!string.IsNullOrEmpty(search))
             {
+                var lowerSearch = search.ToLower();
+
                 query = query.Where(b =>
-                    b.Purpose.Contains(search) ||
-                    b.Room.Code.Contains(search) ||
-                    b.BorrowerName.Contains(search));
+                    b.Purpose.ToLower().Contains(lowerSearch) ||
+                    b.Room.Code.ToLower().Contains(lowerSearch) ||
+                    b.Room.Name.ToLower().Contains(lowerSearch) ||
+                    b.BorrowerName.ToLower().Contains(lowerSearch) ||
+                    b.Status.ToString().ToLower().Contains(lowerSearch)
+                );
+            }
+
+            if (status.HasValue)
+            {
+                query = query.Where(b => b.Status == status.Value);
+            }
+
+            if (startDate.HasValue)
+            {
+                query = query.Where(b => b.StartTime >= startDate.Value);
+            }
+
+            if (endDate.HasValue)
+            {
+                query = query.Where(b => b.StartTime <= endDate.Value);
             }
 
             query = sortBy?.ToLower() switch
@@ -316,6 +337,14 @@ namespace PeminjamanRuangan.Controllers
                 "starttime" => desc
                     ? query.OrderByDescending(b => b.StartTime)
                     : query.OrderBy(b => b.StartTime),
+
+                "createdat" => desc
+                    ? query.OrderByDescending(b => b.CreatedAt)
+                    : query.OrderBy(b => b.CreatedAt),
+
+                "status" => desc
+                    ? query.OrderByDescending(b => b.Status)
+                    : query.OrderBy(b => b.Status),
 
                 _ => query.OrderByDescending(b => b.CreatedAt)
             };
@@ -346,33 +375,5 @@ namespace PeminjamanRuangan.Controllers
             return Ok(data);
         }
         
-        private async Task AutoUpdateStatuses()
-        {
-            var now = DateTime.Now;
-
-            var completedBookings = await _context.RoomBookings
-                .Where(b =>
-                    b.Status == BookingStatus.Approved &&
-                    b.EndTime <= now)
-                .ToListAsync();
-
-            foreach (var booking in completedBookings)
-            {
-                booking.Status = BookingStatus.Completed;
-            }
-
-            var cancelledBookings = await _context.RoomBookings
-                .Where(b =>
-                    b.Status == BookingStatus.Pending &&
-                    b.EndTime <= now)
-                .ToListAsync();
-
-            foreach (var booking in cancelledBookings)
-            {
-                booking.Status = BookingStatus.Cancelled;
-            }
-
-            await _context.SaveChangesAsync();
-        }
     }
 }
